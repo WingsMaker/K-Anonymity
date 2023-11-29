@@ -1,0 +1,3 @@
+race
+sex
+age_group
