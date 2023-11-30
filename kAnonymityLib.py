@@ -144,3 +144,27 @@ class kAnonymity:
         del df1, master_list, data_store, new_index, new_list
         return 
 
+    def generate_anonymized_dataset(self, k=3):
+        dfg = self.dataframe.groupby(self.feature_columns)
+        group_list = list(dfg.groups.keys())
+        records = []
+        for x in [ x for x in group_list if dfg.get_group(x).age.count() >= k]:
+                y=dfg.get_group(x)
+                z=y.to_dict()
+                for w in list(z['workclass']):
+                    dd = {}
+                    for v in self.categorical:
+                        dd[v]=z[v][w]
+                    records.append(dd)
+        self.results_df = pd.DataFrame(records)
+        records = []
+        for x in [ x for x in group_list if dfg.get_group(x).age.count() < k]:
+                y=dfg.get_group(x)
+                z=y.to_dict()
+                for w in list(z['workclass']):
+                    dd = {}
+                    for v in self.categorical:
+                        dd[v]=z[v][w]
+                    records.append(dd)
+        self.removed_df = pd.DataFrame(records)
+        return 
