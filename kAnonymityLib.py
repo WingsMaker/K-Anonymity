@@ -148,20 +148,20 @@ class kAnonymity:
         dfg = self.dataframe.groupby(self.feature_columns)
         group_list = list(dfg.groups.keys())
         records = []
-        for x in [ x for x in group_list if dfg.get_group(x).age.count() >= k]:
+        for x in [ x for x in group_list if dfg.get_group(x)[self.categorical[0]].count() >= k]:
                 y=dfg.get_group(x)
                 z=y.to_dict()
-                for w in list(z['workclass']):
+                for w in list(z[self.categorical[0]]):
                     dd = {}
                     for v in self.categorical:
                         dd[v]=z[v][w]
                     records.append(dd)
         self.results_df = pd.DataFrame(records)
         records = []
-        for x in [ x for x in group_list if dfg.get_group(x).age.count() < k]:
+        for x in [ x for x in group_list if dfg.get_group(x)[self.categorical[0]].count() < k]:
                 y=dfg.get_group(x)
                 z=y.to_dict()
-                for w in list(z['workclass']):
+                for w in list(z[self.categorical[0]]):
                     dd = {}
                     for v in self.categorical:
                         dd[v]=z[v][w]
