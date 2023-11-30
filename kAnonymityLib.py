@@ -93,40 +93,50 @@ class kAnonymity:
         return [series.mean()]
 
     def build_anonymized_dataset(self, max_partitions=None, k=3):
-        print( "build_anonymized_dataset")
-        aggregations = {}
         rows = []
-        for column in self.feature_columns:
-            if column in self.categorical:
-                aggregations[column] = self.agg_categorical_column
-            else:
-                aggregations[column] = self.agg_numerical_column
-        rows = []
+        if self.sensitive_column=="":
+            cols = self.feature_columns
+        else:
+            cols = self.feature_columns+[self.sensitive_column]
         if len(self.finished_partitions) == 0:
-            print("no paritions")
-            if self.sensitive_column=="":
-                cols = self.feature_columns
-            else:
-                cols = self.feature_columns+[self.sensitive_column]
             dfg = self.dataframe[cols].groupby(cols).size().reset_index(name='Count')
-            self.result_df = dfg[ dfg.Count >= k ]
-            return
-        for i, partition in enumerate(self.finished_partitions):
-            if max_partitions is not None and i > max_partitions:
-                break
-            grouped_columns = self.dataframe.loc[partition].agg(aggregations, squeeze=False)
-            sensitive_counts = self.dataframe.loc[partition].groupby(self.sensitive_column).agg({self.sensitive_column : 'count'})
-            values = { x:grouped_columns[x][0] for x in grouped_columns.to_dict() }
-            for sensitive_value, count in sensitive_counts[self.sensitive_column].items():
-                if count < k:
-                    continue
-                values.update({
-                    self.sensitive_column : sensitive_value,
-                    'count' : count,
+            df1 = dfg[ dfg.Count >= k ]
+            master_list=[ df1[cols][df1.index==x].iloc[0].to_list() for x in df1.index ]
+            data_store=[ [x, self.dataframe[cols][self.dataframe.index==x].iloc[0].to_list()] for x in self.dataframe.index ]
+            new_index = [ x[0] for x in data_store if x[1] in master_list]
+            new_list=[ self.dataframe[self.dataframe.index==x].iloc[0].to_list() for x in self.dataframe.index if x in new_index]
+            self.result_df = pd.DataFrame(new_list)
+            self.result_df.columns = self.dataframe.columns 
+            del dfg
+        else:
+            aggregations = {}
+            for column in self.feature_columns:
+                if column in self.categorical:
+                    aggregations[column] = self.agg_categorical_column
+                else:
+                    aggregations[column] = self.agg_numerical_column
+            for i, partition in enumerate(self.finished_partitions):
+                if max_partitions is not None and i > max_partitions:
+                    break
+                grouped_columns = self.dataframe.loc[partition].agg(aggregations, squeeze=False)
+                sensitive_counts = self.dataframe.loc[partition].groupby(self.sensitive_column).agg({self.sensitive_column : 'count'})
+                values = { x:grouped_columns[x][0] for x in grouped_columns.to_dict() }
+                for sensitive_value, count in sensitive_counts[self.sensitive_column].items():
+                    if count < k:
+                        continue
+                    values.update({
+                        self.sensitive_column : sensitive_value,
+                        'count' : count,
 
-                })
-                rows.append(values.copy())
-        self.result_df = pd.DataFrame(rows)
-        self.result_df.sort_values(self.feature_columns+[self.sensitive_column])
+                    })
+                    rows.append(values.copy())
+            df1 = pd.DataFrame(rows)
+        master_list=[ df1[cols][df1.index==x].iloc[0].to_list() for x in df1.index ]
+        data_store=[ [x, self.dataframe[cols][self.dataframe.index==x].iloc[0].to_list()] for x in self.dataframe.index ]
+        new_index = [ x[0] for x in data_store if x[1] in master_list]
+        new_list=[ self.dataframe[self.dataframe.index==x].iloc[0].to_list() for x in self.dataframe.index if x in new_index]
+        self.result_df = pd.DataFrame(new_list)
+        self.result_df.columns = self.dataframe.columns 
+        del df1, master_list, data_store, new_index, new_list
         return 
 
